@@ -5,7 +5,7 @@ use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
 
 use async_std::task;
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use config::{Config, ConfigError, File};
 use std::env;
 use std::vec::Vec;
@@ -17,7 +17,7 @@ fn main() {
 
     let app = App::new("ntf")
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .version("0.1.0")
+        .version(crate_version!())
         .subcommand(
             SubCommand::with_name("send")
                 .about("send notification")
