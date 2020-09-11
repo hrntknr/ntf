@@ -8,6 +8,8 @@ use async_std::task;
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use config::{Config, ConfigError, File};
 use std::env;
+use std::process::{exit, Command, Stdio};
+use std::time::{Duration, Instant};
 use std::vec::Vec;
 
 fn main() {
@@ -30,6 +32,19 @@ fn main() {
                         .takes_value(true),
                 )
                 .arg(Arg::with_name("message").required(true).multiple(true)),
+        )
+        .subcommand(
+            SubCommand::with_name("done")
+                .about("Execute the command and notify the message")
+                .arg(
+                    Arg::with_name("title")
+                        .long("title")
+                        .short("t")
+                        .multiple(false)
+                        .help("override title")
+                        .takes_value(true),
+                )
+                .arg(Arg::with_name("cmd").required(true).multiple(true)),
         );
     let matches = app.get_matches();
 
@@ -50,7 +65,66 @@ fn main() {
         config.into_iter().for_each(|backend| {
             task::block_on(backend.send(message.as_str(), title)).unwrap();
         });
+    } else if let Some(ref sub_matches) = matches.subcommand_matches("done") {
+        let title = match sub_matches.value_of("title") {
+            Some(title) => title,
+            None => default_title,
+        };
+        let cmd = sub_matches.values_of("cmd").unwrap();
+        let cmd: Vec<String> = cmd.map(|s| s.to_string()).collect();
+        let start = Instant::now();
+        let cmd_exec = Command::new(&cmd[0])
+            .args(&cmd[1..])
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn();
+        let cmd_exec = match cmd_exec {
+            Ok(ok) => ok,
+            Err(err) => {
+                println!("{}", err.to_string());
+                exit(err.raw_os_error().unwrap())
+            }
+        }
+        .wait();
+        let code = match cmd_exec {
+            Ok(ok) => ok,
+            Err(err) => {
+                println!("{}", err.to_string());
+                exit(err.raw_os_error().unwrap())
+            }
+        }
+        .code()
+        .unwrap();
+        let duration = start.elapsed();
+
+        let message = if code == 0 {
+            format!(
+                "`{}` success in {}",
+                cmd.join(" ").escape_default().to_string(),
+                format_duration(duration),
+            )
+        } else {
+            format!(
+                "`{}` failed (code {}) in {}",
+                cmd.join(" ").escape_default().to_string(),
+                code,
+                format_duration(duration),
+            )
+        };
+        config.into_iter().for_each(|backend| {
+            task::block_on(backend.send(message.as_str(), title)).unwrap();
+        });
+        exit(code);
     }
+}
+
+fn format_duration(duration: Duration) -> String {
+    let sec = duration.as_secs();
+    if sec < 60 {
+        return format!("{}m {}s", sec / 60, sec % 60);
+    }
+    format!("{}h {}m {}s", sec / 60 / 60, (sec / 60) % 60, sec % 60)
 }
 
 pub fn get_title() -> String {
