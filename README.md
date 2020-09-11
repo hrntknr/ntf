@@ -19,7 +19,12 @@ $ sudo chmod +x /usr/local/bin/ntf
 $ echo -e 'backends: ["pushover"]\npushover: {"user_key": "t0k3n"}' > ~/.ntf.yml
 $ # If you want to use slack, you can do the following
 $ # echo -e 'backends: ["slack"]\nslack: {"webhook: "https://hooks.slack.com/services/hogehoge"}' > ~/.ntf.yml
+$
+$ # send message: "test"
 $ ntf send test
+$
+$ # exec command: `sleep 1` and send result
+$ ntf done sleep 1
 ```
 
 ## Supported backend
