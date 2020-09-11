@@ -24,5 +24,6 @@ $ ntf send test
 
 ## Supported backend
 
-- slack(incoming webhook)
-- pushover
+- [slack: (webhook)](https://api.slack.com/messaging/webhooks)
+- [pushover](https://pushover.net/)
+- [line](https://notify-bot.line.me/)
