@@ -1,0 +1,17 @@
+[package]
+name = "ntf"
+version = "0.1.0"
+authors = ["Takanori Hirano <hrn.takanori@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+surf = "1.0"
+config = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+async-trait = "0.1"
+async-std = "1.6"
+dirs = "1.0"
+hostname = "0.3"
+username = "0.2"
+clap = "2"
