@@ -46,6 +46,7 @@ fn main() {
             acc.push_str(cur);
             acc
         });
+        let message = unescape(message);
         config.into_iter().for_each(|backend| {
             task::block_on(backend.send(message.as_str(), title)).unwrap();
         });
@@ -108,4 +109,11 @@ fn get_config() -> Result<Vec<Box<dyn Backend>>, ConfigError> {
     }
 
     Ok(backends)
+}
+
+fn unescape(txt: String) -> String {
+    txt.replace("\\\\", "\\")
+        .replace("\\n", "\n")
+        .replace("\\r", "\r")
+        .replace("\\t", "\t")
 }
