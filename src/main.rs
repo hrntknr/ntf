@@ -1,5 +1,6 @@
 extern crate ntf;
 use ntf::backends::common::Backend;
+use ntf::backends::line::LineConfig;
 use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
 
@@ -85,13 +86,17 @@ fn get_config() -> Result<Vec<Box<dyn Backend>>, ConfigError> {
         let settings = settings.clone();
         let backend_str = backend_str.into_str()?;
         match backend_str.as_str() {
-            "slack" => {
-                let conf = settings.try_into::<SlackConfig>()?;
-                backends.push(Box::new(conf.slack));
+            "line" => {
+                let conf = settings.try_into::<LineConfig>()?;
+                backends.push(Box::new(conf.line));
             }
             "pushover" => {
                 let conf = settings.try_into::<PushoverConfig>()?;
                 backends.push(Box::new(conf.pushover));
+            }
+            "slack" => {
+                let conf = settings.try_into::<SlackConfig>()?;
+                backends.push(Box::new(conf.slack));
             }
             _ => {
                 return Err(ConfigError::Message(format!(
