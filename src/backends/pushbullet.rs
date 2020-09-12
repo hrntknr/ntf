@@ -38,10 +38,13 @@ impl Backend for PushbulletBackend {
             Ok(req) => req,
             Err(err) => return Err(BackendError::Message(err.to_string())),
         };
-        match req.await {
-            Ok(res) => (),
+        let res = match req.await {
+            Ok(res) => res,
             Err(err) => return Err(BackendError::Message(err.to_string())),
         };
+        if res.status() != 200 {
+            return Err(BackendError::Message(res.status().to_string()));
+        }
 
         Ok(())
     }
