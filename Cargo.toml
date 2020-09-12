@@ -16,3 +16,6 @@ hostname = "0.3"
 username = "0.2"
 clap = "2"
 failure = "0.1.8"
+
+[dev-dependencies]
+regex = "1"

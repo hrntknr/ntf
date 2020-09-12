@@ -801,6 +801,7 @@ dependencies = [
  "dirs",
  "failure",
  "hostname",
+ "regex",
  "serde 1.0.115",
  "surf",
  "thiserror",

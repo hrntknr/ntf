@@ -313,3 +313,23 @@ fn unescape(txt: String) -> String {
         .replace("\\r", "\r")
         .replace("\\t", "\t")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use regex::Regex;
+
+    #[test]
+    fn get_title_test() {
+        let title = get_title().unwrap();
+        let re = Regex::new(r"^.+@.+:.+$").unwrap();
+        assert!(re.is_match(title.as_str()));
+    }
+
+    #[test]
+    fn unescape_test() {
+        let test = "\\n\\r\\t\\\\\\'\\\"\\0";
+        let expect = "\n\r\t\\\\'\\\"\\0";
+        assert_eq!(unescape(test.to_string()), expect);
+    }
+}
