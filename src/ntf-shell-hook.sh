@@ -5,7 +5,7 @@ function _ntf_precmd() {
   [[ -n "$ntf_start_time" ]] || return
   local duration=$(($(date +%s) - $ntf_start_time))
   ntf_start_time=''
-  [[ "$duration" < "$AUTO_NTF_DONE_LONGER_THAN" ]] && return
+  [[ "$duration" -le "$AUTO_NTF_DONE_LONGER_THAN" ]] && return
 
   local appname=$(basename "${ntf_command%% *}")
   [[ " $AUTO_NTF_DONE_IGNORE " == *" $appname "* ]] && return
