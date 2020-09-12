@@ -53,6 +53,7 @@ backends:
   - slack
 slack:
   webhook: 'https://discordapp.com/api/webhooks/****/****/slack'
+  color: '#ff0000' #option
 ```
 
 ### [pushbullet](https://pushbullet.com/)
@@ -75,6 +76,9 @@ backends:
   - pushover
 pushover:
   user_key: '********************'
+  priority: 'emergency' #option (emergency|high|normal|low|lowest)
+  retry: 30 #option
+  expire: 3600 #option
 ```
 
 ### [line](https://notify-bot.line.me/)

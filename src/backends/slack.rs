@@ -26,6 +26,7 @@ pub struct SlackConfig {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SlackBackend {
     webhook: String,
+    color: Option<String>,
 }
 
 #[async_trait]
@@ -35,7 +36,10 @@ impl Backend for SlackBackend {
         attachments.push(Attachment {
             title: title.to_string(),
             text: msg.to_string(),
-            color: COLOR.to_string(),
+            color: match self.color.clone() {
+                Some(color) => color,
+                None => COLOR.to_string(),
+            },
         });
         let body = &Body {
             icon_url: ICON_URL.to_string(),

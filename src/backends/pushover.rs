@@ -11,6 +11,10 @@ struct Body {
     user: String,
     title: String,
     message: String,
+    device: Option<String>,
+    priority: Option<isize>,
+    retry: Option<usize>,
+    expire: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +25,24 @@ pub struct PushoverConfig {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PushoverBackend {
     user_key: String,
+    device: Option<String>,
+    priority: Option<Priority>,
+    retry: Option<usize>,
+    expire: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Priority {
+    #[serde(rename = "emergency")]
+    Emergency,
+    #[serde(rename = "high")]
+    High,
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "low")]
+    Low,
+    #[serde(rename = "lowest")]
+    Lowest,
 }
 
 #[async_trait]
@@ -31,6 +53,17 @@ impl Backend for PushoverBackend {
             user: self.user_key.to_string(),
             title: title.to_string(),
             message: msg.to_string(),
+            device: self.device.clone(),
+            priority: match self.priority {
+                Some(Priority::Emergency) => Some(2),
+                Some(Priority::High) => Some(1),
+                Some(Priority::Normal) => Some(0),
+                Some(Priority::Low) => Some(-1),
+                Some(Priority::Lowest) => Some(-2),
+                None => None,
+            },
+            retry: self.retry,
+            expire: self.expire,
         };
         let req = match surf::post(API_URL).body_json(body) {
             Ok(req) => req,
