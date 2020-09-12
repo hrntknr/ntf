@@ -113,9 +113,11 @@ fn send(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<()
         acc
     });
     let message = unescape(message);
-    backends.into_iter().for_each(|backend| {
-        task::block_on(backend.send(message.as_str(), title.as_str())).unwrap();
-    });
+    let result: Result<(), BackendError> = backends
+        .into_iter()
+        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str())))
+        .collect();
+    result?;
 
     Ok(())
 }
@@ -155,9 +157,11 @@ fn done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<()
             format_duration(duration),
         )
     };
-    backends.into_iter().for_each(|backend| {
-        task::block_on(backend.send(message.as_str(), title.as_str())).unwrap();
-    });
+    let result: Result<(), BackendError> = backends
+        .into_iter()
+        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str())))
+        .collect();
+    result?;
 
     Ok(())
 }
