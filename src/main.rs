@@ -1,6 +1,7 @@
 extern crate ntf;
 use ntf::backends::common::Backend;
 use ntf::backends::line::LineConfig;
+use ntf::backends::pushbullet::PushbulletConfig;
 use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
 
@@ -164,6 +165,10 @@ fn get_config() -> Result<Vec<Box<dyn Backend>>, ConfigError> {
             "line" => {
                 let conf = settings.try_into::<LineConfig>()?;
                 backends.push(Box::new(conf.line));
+            }
+            "pushbullet" => {
+                let conf = settings.try_into::<PushbulletConfig>()?;
+                backends.push(Box::new(conf.pushbullet));
             }
             "pushover" => {
                 let conf = settings.try_into::<PushoverConfig>()?;
