@@ -1,13 +1,14 @@
 extern crate ntf;
-use ntf::backends::common::Backend;
+use ntf::backends::common::{Backend, BackendError};
 use ntf::backends::line::LineConfig;
 use ntf::backends::pushbullet::PushbulletConfig;
 use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
 
 use async_std::task;
-use clap::{crate_version, App, AppSettings, Arg, SubCommand};
-use config::{Config, ConfigError, File};
+use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
+use config::{Config, File};
+use failure::{format_err, Error};
 use std::env;
 use std::fs;
 use std::process::{exit, Command, Stdio};
@@ -15,9 +16,13 @@ use std::time::{Duration, Instant};
 use std::vec::Vec;
 
 fn main() {
-    let config = get_config().unwrap();
-    let default_title = get_title();
-    let default_title = default_title.as_str();
+    let config = match get_config() {
+        Ok(config) => config,
+        Err(err) => {
+            println!("{}", err.to_string());
+            exit(1);
+        }
+    };
 
     let app = App::new("ntf")
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -58,153 +63,176 @@ fn main() {
     let matches = app.get_matches();
 
     if let Some(ref sub_matches) = matches.subcommand_matches("send") {
-        let title = match sub_matches.value_of("title") {
-            Some(title) => title,
-            None => default_title,
-        };
-        let message = sub_matches.values_of("message").unwrap();
-        let message = message.fold(String::new(), |mut acc: String, cur: &str| {
-            if acc != "" {
-                acc.push_str(" ");
+        match send(config, sub_matches) {
+            Ok(_) => {}
+            Err(err) => {
+                println!("{}", err.to_string());
+                exit(1);
             }
-            acc.push_str(cur);
-            acc
-        });
-        let message = unescape(message);
-        config.into_iter().for_each(|backend| {
-            task::block_on(backend.send(message.as_str(), title)).unwrap();
-        });
+        }
     } else if let Some(ref sub_matches) = matches.subcommand_matches("done") {
-        let title = match sub_matches.value_of("title") {
-            Some(title) => title,
-            None => default_title,
-        };
-        let cmd = sub_matches.values_of("cmd").unwrap();
-        let cmd: Vec<String> = cmd.map(|s| s.to_string()).collect();
-        let start = Instant::now();
-        let cmd_exec = Command::new(&cmd[0])
-            .args(&cmd[1..])
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn();
-        let cmd_exec = match cmd_exec {
-            Ok(ok) => ok,
+        match done(config, sub_matches) {
+            Ok(_) => {}
             Err(err) => {
                 println!("{}", err.to_string());
-                exit(err.raw_os_error().unwrap())
+                exit(1);
             }
         }
-        .wait();
-        let code = match cmd_exec {
-            Ok(ok) => ok,
-            Err(err) => {
-                println!("{}", err.to_string());
-                exit(err.raw_os_error().unwrap())
-            }
-        }
-        .code()
-        .unwrap();
-        let duration = start.elapsed();
-
-        let message = if code == 0 {
-            format!(
-                "`{}` success in {}",
-                cmd.join(" ").escape_default().to_string(),
-                format_duration(duration),
-            )
-        } else {
-            format!(
-                "`{}` failed (code {}) in {}",
-                cmd.join(" ").escape_default().to_string(),
-                code,
-                format_duration(duration),
-            )
-        };
-        config.into_iter().for_each(|backend| {
-            task::block_on(backend.send(message.as_str(), title)).unwrap();
-        });
-        exit(code);
     } else if let Some(ref sub_matches) = matches.subcommand_matches("shell-done") {
-        let title = match sub_matches.value_of("title") {
-            Some(title) => title,
-            None => default_title,
-        };
-
-        let code = sub_matches.value_of("code").unwrap();
-        let code: i32 = match code.parse() {
-            Ok(code) => code,
-            Err(_) => {
-                println!("invalid code {}", code);
-                exit(1)
+        match shell_done(config, sub_matches) {
+            Ok(_) => {}
+            Err(err) => {
+                println!("{}", err.to_string());
+                exit(1);
             }
-        };
-        let duration = sub_matches.value_of("duration").unwrap();
-        let duration: u64 = match duration.parse() {
-            Ok(duration) => duration,
-            Err(_) => {
-                println!("invalid duration {}", duration);
-                exit(1)
+        }
+    } else if let Some(ref sub_matches) = matches.subcommand_matches("shell-integration") {
+        match shell_integration(config, sub_matches) {
+            Ok(_) => {}
+            Err(err) => {
+                println!("{}", err.to_string());
+                exit(1);
             }
-        };
-        let duration = Duration::from_secs(duration);
-        let cmd = sub_matches.values_of("cmd").unwrap();
-        let cmd: Vec<String> = cmd.map(|s| s.to_string()).collect();
-
-        let message = if code == 0 {
-            format!(
-                "`{}` success in {}",
-                cmd.join(" ").escape_default().to_string(),
-                format_duration(duration),
-            )
-        } else {
-            format!(
-                "`{}` failed (code {}) in {}",
-                cmd.join(" ").escape_default().to_string(),
-                code,
-                format_duration(duration),
-            )
-        };
-        config.into_iter().for_each(|backend| {
-            task::block_on(backend.send(message.as_str(), title)).unwrap();
-        });
-        exit(code);
-    } else if let Some(ref _sub_matches) = matches.subcommand_matches("shell-integration") {
-        let mut dir = dirs::data_local_dir().unwrap();
-        dir.push("ntf");
-        if !dir.exists() {
-            match fs::create_dir_all(dir) {
-                Ok(_) => (),
-                Err(err) => {
-                    println!("{}", err.to_string());
-                    exit(err.raw_os_error().unwrap())
-                }
-            };
-        };
-
-        let mut file = dirs::data_local_dir().unwrap();
-        file.push("ntf/ntf-shell-hook.sh");
-        if !file.exists() {
-            match fs::write(file, include_str!("./ntf-shell-hook.sh")) {
-                Ok(_) => (),
-                Err(err) => {
-                    println!("{}", err.to_string());
-                    exit(err.raw_os_error().unwrap())
-                }
-            };
-        };
-        {
-            println!("export AUTO_NTF_DONE_LONGER_THAN=10");
-            println!(
-                "source {}/ntf/ntf-shell-hook.sh",
-                dirs::data_local_dir().unwrap().to_str().unwrap()
-            );
-            println!(
-                "# To use ntf's shell integration, run this and add it to your shell's rc file:"
-            );
-            println!("# eval \"$(ntf shell-integration)\"");
         }
     }
+}
+
+fn send(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<(), Error> {
+    let title = match sub_matches.value_of("title") {
+        Some(title) => title.to_string(),
+        None => get_title()?,
+    };
+    let message = sub_matches
+        .values_of("message")
+        .ok_or(format_err!("can't get message"))?;
+    let message = message.fold(String::new(), |mut acc: String, cur: &str| {
+        if acc != "" {
+            acc.push_str(" ");
+        }
+        acc.push_str(cur);
+        acc
+    });
+    let message = unescape(message);
+    backends.into_iter().for_each(|backend| {
+        task::block_on(backend.send(message.as_str(), title.as_str())).unwrap();
+    });
+
+    Ok(())
+}
+
+fn done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<(), Error> {
+    let title = match sub_matches.value_of("title") {
+        Some(title) => title.to_string(),
+        None => get_title()?,
+    };
+    let cmd = sub_matches
+        .values_of("cmd")
+        .ok_or(format_err!("can't get cmd"))?;
+    let cmd: Vec<String> = cmd.map(|s| s.to_string()).collect();
+    let start = Instant::now();
+    let code = Command::new(&cmd[0])
+        .args(&cmd[1..])
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?
+        .wait()?
+        .code()
+        .ok_or(format_err!("can't get code"))?;
+    let duration = start.elapsed();
+
+    let message = if code == 0 {
+        format!(
+            "`{}` success in {}",
+            cmd.join(" ").escape_default().to_string(),
+            format_duration(duration),
+        )
+    } else {
+        format!(
+            "`{}` failed (code {}) in {}",
+            cmd.join(" ").escape_default().to_string(),
+            code,
+            format_duration(duration),
+        )
+    };
+    backends.into_iter().for_each(|backend| {
+        task::block_on(backend.send(message.as_str(), title.as_str())).unwrap();
+    });
+
+    Ok(())
+}
+
+fn shell_done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<(), Error> {
+    let title = match sub_matches.value_of("title") {
+        Some(title) => title.to_string(),
+        None => get_title()?,
+    };
+
+    let code: i32 = sub_matches
+        .value_of("code")
+        .ok_or(format_err!("can't get code"))?
+        .parse()?;
+    let duration = sub_matches
+        .value_of("duration")
+        .ok_or(format_err!("can't get duration"))?
+        .parse()?;
+    let duration = Duration::from_secs(duration);
+    let cmd: Vec<String> = sub_matches
+        .values_of("cmd")
+        .ok_or(format_err!("can't get cmd"))?
+        .map(|s| s.to_string())
+        .collect();
+
+    let message = if code == 0 {
+        format!(
+            "`{}` success in {}",
+            cmd.join(" ").escape_default().to_string(),
+            format_duration(duration),
+        )
+    } else {
+        format!(
+            "`{}` failed (code {}) in {}",
+            cmd.join(" ").escape_default().to_string(),
+            code,
+            format_duration(duration),
+        )
+    };
+    let result: Result<(), BackendError> = backends
+        .into_iter()
+        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str())))
+        .collect();
+    result?;
+
+    Ok(())
+}
+
+fn shell_integration(
+    _backends: Vec<Box<dyn Backend>>,
+    _sub_matches: &&ArgMatches,
+) -> Result<(), Error> {
+    let mut dir = dirs::data_local_dir().ok_or(format_err!("can't get data_local_dir"))?;
+    dir.push("ntf");
+    if !dir.exists() {
+        fs::create_dir_all(dir)?
+    };
+
+    let mut file = dirs::data_local_dir().ok_or(format_err!("can't get data_local_dir"))?;
+    file.push("ntf/ntf-shell-hook.sh");
+    if !file.exists() {
+        fs::write(file, include_str!("./ntf-shell-hook.sh"))?
+    };
+    println!("export AUTO_NTF_DONE_LONGER_THAN=10");
+    println!(
+        "source {}/ntf/ntf-shell-hook.sh",
+        dirs::data_local_dir()
+            .ok_or(format_err!("can't get data_local_dir"))?
+            .to_str()
+            .ok_or(format_err!("can't get data_local_dir"))?
+    );
+    println!("# To use ntf's shell integration, run this and add it to your shell's rc file:");
+    println!("# eval \"$(ntf shell-integration)\"");
+
+    Ok(())
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -215,32 +243,33 @@ fn format_duration(duration: Duration) -> String {
     format!("{}h {}m {}s", sec / 60 / 60, (sec / 60) % 60, sec % 60)
 }
 
-pub fn get_title() -> String {
-    let path = env::current_dir().unwrap();
-    let path = path.to_str().unwrap();
-    let home = dirs::home_dir().unwrap();
-    let home = home.to_str().unwrap();
-    let host = hostname::get().unwrap().into_string().unwrap();
-    let user = username::get_user_name().unwrap();
+pub fn get_title() -> Result<String, Error> {
+    let path = env::current_dir()?;
+    let path = path.to_str().ok_or(format_err!("can't get current_dir"))?;
+    let home = dirs::home_dir().ok_or(format_err!("can't get home_dir"))?;
+    let home = home.to_str().ok_or(format_err!("can't get home_dir"))?;
+    let host = hostname::get()?.into_string().unwrap();
+    let user = username::get_user_name()?;
     let relative_path = if path.starts_with(home) {
         path.replacen(home, "~", 1)
     } else {
         path.to_string()
     };
-    format!(
+
+    Ok(format!(
         "{}@{}:{}",
         user.to_string(),
         host.to_string(),
         relative_path,
-    )
+    ))
 }
 
-fn get_config() -> Result<Vec<Box<dyn Backend>>, ConfigError> {
-    let mut path = dirs::home_dir().unwrap();
+fn get_config() -> Result<Vec<Box<dyn Backend>>, Error> {
+    let mut path = dirs::home_dir().ok_or(format_err!("can't get home_dir"))?;
     path.push(".ntf.yml");
 
     let mut settings = Config::default();
-    settings.merge(File::from(path)).unwrap();
+    settings.merge(File::from(path))?;
 
     let backends_str = settings.get_array("backends")?;
     let mut backends: Vec<Box<dyn Backend>> = Vec::new();
@@ -266,10 +295,7 @@ fn get_config() -> Result<Vec<Box<dyn Backend>>, ConfigError> {
                 backends.push(Box::new(conf.slack));
             }
             _ => {
-                return Err(ConfigError::Message(format!(
-                    "invalid backend: {}",
-                    backend_str.as_str()
-                )));
+                return Err(format_err!("invalid backend: {}", backend_str.as_str()));
             }
         }
     }
