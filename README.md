@@ -13,7 +13,7 @@ However, support for the backend type is poorer than ntfy.
 ## Quickstart
 
 ```sh
-$ sudo curl -L https://github.com/hrntknr/ntf/releases/download/v0.1.1/ntf-linux-amd64 -o /usr/local/bin/ntf
+$ sudo curl -L https://github.com/hrntknr/ntf/releases/download/v0.1.2/ntf-linux-amd64 -o /usr/local/bin/ntf
 $ sudo chmod +x /usr/local/bin/ntf
 
 $ echo -e 'backends: ["pushover"]\npushover: {"user_key": "t0k3n"}' > ~/.ntf.yml
