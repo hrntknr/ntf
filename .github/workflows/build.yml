@@ -42,6 +42,7 @@ jobs:
         with:
           command: build
           args: --release
+      - run: strip target/release/ntf
 
       - uses: actions/upload-artifact@v1
         with:
