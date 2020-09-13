@@ -4,6 +4,7 @@ use ntf::backends::line::LineConfig;
 use ntf::backends::pushbullet::PushbulletConfig;
 use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
+use ntf::backends::syslog::SyslogConfig;
 
 use async_std::task;
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches};
@@ -14,6 +15,7 @@ use std::fs;
 use std::process::{exit, Command, Stdio};
 use std::time::{Duration, Instant};
 use std::vec::Vec;
+use syslog::Facility;
 
 fn main() {
     let config = match get_config() {
@@ -57,6 +59,24 @@ fn main() {
             .long("slack.color")
             .multiple(false)
             .takes_value(true),
+        Arg::with_name("syslog_facility")
+            .about("override syslog facility")
+            .long("syslog.facility")
+            .multiple(false)
+            .takes_value(true)
+            .possible_values(&[
+                "kern", "user", "mail", "daemon", "auth", "syslog", "lpr", "news", "uucp", "cron",
+                "authpriv", "ftp", "local0", "local1", "local2", "local3", "local4", "local5",
+                "local6", "local7",
+            ]),
+        Arg::with_name("syslog_severity")
+            .about("override syslog severity")
+            .long("syslog.severity")
+            .multiple(false)
+            .takes_value(true)
+            .possible_values(&[
+                "emerg", "alert", "crit", "err", "warning", "notice", "info", "debug",
+            ]),
     ];
 
     let app = App::new("ntf")
@@ -149,6 +169,19 @@ fn get_send_option(sub_matches: &&ArgMatches) -> Result<SendOption, Error> {
             Some(value) => Some(value?),
             None => None,
         },
+        syslog_facility: match sub_matches
+            .value_of("syslog_facility")
+            .map(|s| s.parse::<Facility>())
+        {
+            Some(value) => Some(match value {
+                Ok(facility) => facility,
+                Err(_) => return Err(format_err!("can't get message")),
+            }),
+            None => None,
+        },
+        syslog_severity: sub_matches
+            .value_of("syslog_severity")
+            .map(|s| s.to_string()),
     };
     Ok(opt)
 }
@@ -371,6 +404,10 @@ fn get_config() -> Result<Vec<Box<dyn Backend>>, Error> {
             "slack" => {
                 let conf = settings.try_into::<SlackConfig>()?;
                 backends.push(Box::new(conf.slack));
+            }
+            "syslog" => {
+                let conf = settings.try_into::<SyslogConfig>()?;
+                backends.push(Box::new(conf.syslog));
             }
             _ => {
                 return Err(format_err!("invalid backend: {}", backend_str.as_str()));
