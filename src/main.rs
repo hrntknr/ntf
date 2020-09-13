@@ -64,12 +64,14 @@ fn main() {
         .version(crate_version!())
         .subcommand(
             App::new("send")
+                .setting(AppSettings::TrailingVarArg)
                 .about("send notification")
                 .args(basic_args)
                 .arg(Arg::with_name("message").required(true).multiple(true)),
         )
         .subcommand(
             App::new("done")
+                .setting(AppSettings::TrailingVarArg)
                 .about("Execute the command and notify the message")
                 .args(basic_args)
                 .arg(Arg::with_name("cmd").required(true).multiple(true)),
@@ -213,7 +215,13 @@ fn done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<()
             format_duration(duration),
         )
     };
-    let opt = get_send_option(sub_matches)?;
+    let mut opt = get_send_option(sub_matches)?;
+    if opt.slack_color == None {
+        match code {
+            0 => opt.slack_color = Some("good".to_string()),
+            _ => opt.slack_color = Some("warning".to_string()),
+        }
+    }
 
     let result: Result<(), BackendError> = backends
         .into_iter()
@@ -259,7 +267,13 @@ fn shell_done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Res
             format_duration(duration),
         )
     };
-    let opt = get_send_option(sub_matches)?;
+    let mut opt = get_send_option(sub_matches)?;
+    if opt.slack_color == None {
+        match code {
+            0 => opt.slack_color = Some("good".to_string()),
+            _ => opt.slack_color = Some("warning".to_string()),
+        }
+    }
 
     let result: Result<(), BackendError> = backends
         .into_iter()
