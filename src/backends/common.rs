@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use syslog::Facility;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -15,6 +16,8 @@ pub struct SendOption {
     pub pushover_priority: Option<Priority>,
     pub pushover_retry: Option<usize>,
     pub pushover_expire: Option<usize>,
+    pub syslog_facility: Option<Facility>,
+    pub syslog_severity: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -99,3 +99,15 @@ backends:
 line:
   token: '********************'
 ```
+
+### syslog
+
+`~/.ntf.yml` example:
+
+```yml
+backends:
+  - syslog
+syslog:
+  facility: 'user' #option
+  severity: 'emerg' #option
+```
