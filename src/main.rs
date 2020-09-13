@@ -1,12 +1,12 @@
 extern crate ntf;
-use ntf::backends::common::{Backend, BackendError};
+use ntf::backends::common::{Backend, BackendError, Priority, SendOption};
 use ntf::backends::line::LineConfig;
 use ntf::backends::pushbullet::PushbulletConfig;
 use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
 
 use async_std::task;
-use clap::{crate_version, App, AppSettings, Arg, ArgMatches, Clap};
+use clap::{crate_version, App, AppSettings, Arg, ArgMatches};
 use config::{Config, File};
 use failure::{format_err, Error};
 use std::env;
@@ -24,38 +24,60 @@ fn main() {
         }
     };
 
+    let basic_args = &[
+        Arg::with_name("title")
+            .about("override title")
+            .long("title")
+            .short('t')
+            .multiple(false)
+            .takes_value(true),
+        Arg::with_name("pushover_device")
+            .about("override pushover device")
+            .long("pushover.device")
+            .multiple(false)
+            .takes_value(true),
+        Arg::with_name("pushover_priority")
+            .about("override pushover priority")
+            .long("pushover.priority")
+            .multiple(false)
+            .takes_value(true)
+            .possible_values(&["emergency", "high", "normal", "low", "lowest"]),
+        Arg::with_name("pushover_retry")
+            .about("override pushover retry")
+            .long("pushover.retry")
+            .multiple(false)
+            .takes_value(true),
+        Arg::with_name("pushover_expire")
+            .about("override pushover expire")
+            .long("pushover.expire")
+            .multiple(false)
+            .takes_value(true),
+        Arg::with_name("slack_color")
+            .about("override slack color")
+            .long("slack.color")
+            .multiple(false)
+            .takes_value(true),
+    ];
+
     let app = App::new("ntf")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .version(crate_version!())
         .subcommand(
             App::new("send")
                 .about("send notification")
-                .arg(
-                    Arg::with_name("title")
-                        .about("override title")
-                        .long("title")
-                        .short('t')
-                        .multiple(false)
-                        .takes_value(true),
-                )
+                .args(basic_args)
                 .arg(Arg::with_name("message").required(true).multiple(true)),
         )
         .subcommand(
             App::new("done")
                 .about("Execute the command and notify the message")
-                .arg(
-                    Arg::with_name("title")
-                        .about("override title")
-                        .long("title")
-                        .short('t')
-                        .multiple(false)
-                        .takes_value(true),
-                )
+                .args(basic_args)
                 .arg(Arg::with_name("cmd").required(true).multiple(true)),
         )
         .subcommand(
             App::new("shell-done")
                 .setting(AppSettings::Hidden)
+                .args(basic_args)
                 .arg(Arg::with_name("code").required(true).multiple(false))
                 .arg(Arg::with_name("duration").required(true).multiple(false))
                 .arg(Arg::with_name("cmd").required(true).multiple(true)),
@@ -98,6 +120,37 @@ fn main() {
     }
 }
 
+fn get_send_option(sub_matches: &&ArgMatches) -> Result<SendOption, Error> {
+    let opt = SendOption {
+        slack_color: sub_matches.value_of("slack_color").map(|s| s.to_string()),
+        pushover_device: sub_matches
+            .value_of("pushover_device")
+            .map(|s| s.to_string()),
+        pushover_priority: match sub_matches
+            .value_of("pushover_priority")
+            .map(|s| s.parse::<Priority>())
+        {
+            Some(value) => Some(value?),
+            None => None,
+        },
+        pushover_retry: match sub_matches
+            .value_of("pushover_retry")
+            .map(|s| s.parse::<usize>())
+        {
+            Some(value) => Some(value?),
+            None => None,
+        },
+        pushover_expire: match sub_matches
+            .value_of("pushover_expire")
+            .map(|s| s.parse::<usize>())
+        {
+            Some(value) => Some(value?),
+            None => None,
+        },
+    };
+    Ok(opt)
+}
+
 fn send(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<(), Error> {
     let title = match sub_matches.value_of("title") {
         Some(title) => title.to_string(),
@@ -114,9 +167,11 @@ fn send(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<()
         acc
     });
     let message = unescape(message);
+    let opt = get_send_option(sub_matches)?;
+
     let result: Result<(), BackendError> = backends
         .into_iter()
-        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str())))
+        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str(), &opt)))
         .collect();
     result?;
 
@@ -158,9 +213,11 @@ fn done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<()
             format_duration(duration),
         )
     };
+    let opt = get_send_option(sub_matches)?;
+
     let result: Result<(), BackendError> = backends
         .into_iter()
-        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str())))
+        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str(), &opt)))
         .collect();
     result?;
 
@@ -202,9 +259,11 @@ fn shell_done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Res
             format_duration(duration),
         )
     };
+    let opt = get_send_option(sub_matches)?;
+
     let result: Result<(), BackendError> = backends
         .into_iter()
-        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str())))
+        .map(|backend| task::block_on(backend.send(message.as_str(), title.as_str(), &opt)))
         .collect();
     result?;
 

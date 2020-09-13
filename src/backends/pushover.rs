@@ -1,4 +1,4 @@
-use super::common::{Backend, BackendError};
+use super::common::{Backend, BackendError, Priority, SendOption};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -31,39 +31,42 @@ pub struct PushoverBackend {
     expire: Option<usize>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-enum Priority {
-    #[serde(rename = "emergency")]
-    Emergency,
-    #[serde(rename = "high")]
-    High,
-    #[serde(rename = "normal")]
-    Normal,
-    #[serde(rename = "low")]
-    Low,
-    #[serde(rename = "lowest")]
-    Lowest,
-}
-
 #[async_trait]
 impl Backend for PushoverBackend {
-    async fn send(&self, msg: &str, title: &str) -> Result<(), BackendError> {
+    async fn send(&self, msg: &str, title: &str, option: &SendOption) -> Result<(), BackendError> {
         let body = &Body {
             token: API_TOKEN.to_string(),
             user: self.user_key.to_string(),
             title: title.to_string(),
             message: msg.to_string(),
-            device: self.device.clone(),
-            priority: match self.priority {
-                Some(Priority::Emergency) => Some(2),
-                Some(Priority::High) => Some(1),
-                Some(Priority::Normal) => Some(0),
-                Some(Priority::Low) => Some(-1),
-                Some(Priority::Lowest) => Some(-2),
-                None => None,
+            device: match option.pushover_device.clone() {
+                Some(device) => Some(device),
+                None => match self.device.clone() {
+                    Some(device) => Some(device),
+                    None => None,
+                },
             },
-            retry: self.retry,
-            expire: self.expire,
+            priority: match &option.pushover_priority {
+                Some(priority) => Some(priority_to_pushover_code(priority)),
+                None => match &self.priority {
+                    Some(priority) => Some(priority_to_pushover_code(priority)),
+                    None => None,
+                },
+            },
+            retry: match option.pushover_retry {
+                Some(retry) => Some(retry),
+                None => match self.retry {
+                    Some(retry) => Some(retry),
+                    None => None,
+                },
+            },
+            expire: match option.pushover_expire {
+                Some(expire) => Some(expire),
+                None => match self.expire {
+                    Some(expire) => Some(expire),
+                    None => None,
+                },
+            },
         };
         let req = match surf::post(API_URL).body_json(body) {
             Ok(req) => req,
@@ -78,5 +81,15 @@ impl Backend for PushoverBackend {
         }
 
         Ok(())
+    }
+}
+
+pub fn priority_to_pushover_code(priority: &Priority) -> isize {
+    match priority {
+        Priority::Emergency => 2,
+        Priority::High => 1,
+        Priority::Normal => 0,
+        Priority::Low => -1,
+        Priority::Lowest => -2,
     }
 }

@@ -27,6 +27,8 @@ $ # echo -e 'backends: ["slack"]\nslack: {"webhook: "https://hooks.slack.com/ser
 $
 $ # send message: "test"
 $ ntf send test
+$ # override default setting
+$ ntf send test --pushover.priority emergency --pushover.retry 60 --pushover.expire 3000
 $
 $ # exec command: `sleep 1` and send result
 $ ntf done sleep 1

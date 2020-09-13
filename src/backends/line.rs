@@ -1,4 +1,4 @@
-use super::common::{Backend, BackendError};
+use super::common::{Backend, BackendError, SendOption};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ pub struct LineBackend {
 
 #[async_trait]
 impl Backend for LineBackend {
-    async fn send(&self, msg: &str, title: &str) -> Result<(), BackendError> {
+    async fn send(&self, msg: &str, title: &str, _option: &SendOption) -> Result<(), BackendError> {
         let body = &Body {
             message: format!("{}\n{}", title, msg.to_string()),
         };

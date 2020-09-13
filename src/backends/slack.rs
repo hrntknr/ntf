@@ -1,4 +1,4 @@
-use super::common::{Backend, BackendError};
+use super::common::{Backend, BackendError, SendOption};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -31,14 +31,17 @@ pub struct SlackBackend {
 
 #[async_trait]
 impl Backend for SlackBackend {
-    async fn send(&self, msg: &str, title: &str) -> Result<(), BackendError> {
+    async fn send(&self, msg: &str, title: &str, option: &SendOption) -> Result<(), BackendError> {
         let mut attachments = Vec::new();
         attachments.push(Attachment {
             title: title.to_string(),
             text: msg.to_string(),
-            color: match self.color.clone() {
+            color: match option.slack_color.clone() {
                 Some(color) => color,
-                None => COLOR.to_string(),
+                None => match self.color.clone() {
+                    Some(color) => color,
+                    None => COLOR.to_string(),
+                },
             },
         });
         let body = &Body {

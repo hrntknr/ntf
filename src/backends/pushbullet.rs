@@ -1,4 +1,4 @@
-use super::common::{Backend, BackendError};
+use super::common::{Backend, BackendError, SendOption};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +24,7 @@ pub struct PushbulletBackend {
 
 #[async_trait]
 impl Backend for PushbulletBackend {
-    async fn send(&self, msg: &str, title: &str) -> Result<(), BackendError> {
+    async fn send(&self, msg: &str, title: &str, _option: &SendOption) -> Result<(), BackendError> {
         let body = &Body {
             _type: "note".to_string(),
             title: title.to_string(),
