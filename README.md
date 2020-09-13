@@ -49,6 +49,7 @@ backends:
   - slack
 slack:
   webhook: 'https://hooks.slack.com/services/****'
+  color: '#ff0000' #option
 ```
 
 ### [discord: (Webhook compatible with slack)](https://discord.com/developers/docs/resources/webhook)
