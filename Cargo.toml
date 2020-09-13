@@ -1,6 +1,6 @@
 [package]
 name = "ntf"
-version = "0.1.2"
+version = "0.1.4"
 authors = ["Takanori Hirano <hrn.takanori@gmail.com>"]
 edition = "2018"
 
@@ -14,7 +14,7 @@ async-std = "1.6"
 dirs = "1.0"
 hostname = "0.3"
 username = "0.2"
-clap = "2"
+clap = "3.0.0-beta"
 failure = "0.1.8"
 
 [dev-dependencies]

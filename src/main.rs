@@ -6,7 +6,7 @@ use ntf::backends::pushover::PushoverConfig;
 use ntf::backends::slack::SlackConfig;
 
 use async_std::task;
-use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{crate_version, App, AppSettings, Arg, ArgMatches, Clap};
 use config::{Config, File};
 use failure::{format_err, Error};
 use std::env;
@@ -28,38 +28,39 @@ fn main() {
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .version(crate_version!())
         .subcommand(
-            SubCommand::with_name("send")
+            App::new("send")
                 .about("send notification")
                 .arg(
                     Arg::with_name("title")
+                        .about("override title")
                         .long("title")
-                        .short("t")
+                        .short('t')
                         .multiple(false)
-                        .help("override title")
                         .takes_value(true),
                 )
                 .arg(Arg::with_name("message").required(true).multiple(true)),
         )
         .subcommand(
-            SubCommand::with_name("done")
+            App::new("done")
                 .about("Execute the command and notify the message")
                 .arg(
                     Arg::with_name("title")
+                        .about("override title")
                         .long("title")
-                        .short("t")
+                        .short('t')
                         .multiple(false)
-                        .help("override title")
                         .takes_value(true),
                 )
                 .arg(Arg::with_name("cmd").required(true).multiple(true)),
         )
         .subcommand(
-            SubCommand::with_name("shell-done")
+            App::new("shell-done")
+                .setting(AppSettings::Hidden)
                 .arg(Arg::with_name("code").required(true).multiple(false))
                 .arg(Arg::with_name("duration").required(true).multiple(false))
                 .arg(Arg::with_name("cmd").required(true).multiple(true)),
         )
-        .subcommand(SubCommand::with_name("shell-integration").about("shell-integration"));
+        .subcommand(App::new("shell-integration").about("shell-integration"));
     let matches = app.get_matches();
 
     if let Some(ref sub_matches) = matches.subcommand_matches("send") {
