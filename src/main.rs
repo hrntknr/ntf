@@ -320,7 +320,7 @@ fn shell_integration(
     if !file.exists() {
         fs::write(file, include_str!("./ntf-shell-hook.sh"))?
     };
-    println!("export ${{AUTO_NTF_DONE_LONGER_THAN:=10}}");
+    println!("export AUTO_NTF_DONE_LONGER_THAN=${{AUTO_NTF_DONE_LONGER_THAN:=10}}");
     println!(
         "source {}/ntf/ntf-shell-hook.sh",
         dirs::data_local_dir()

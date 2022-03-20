@@ -1151,7 +1151,7 @@ dependencies = [
 
 [[package]]
 name = "ntf"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "async-std",
  "async-trait",
