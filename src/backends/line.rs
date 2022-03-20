@@ -26,8 +26,8 @@ impl Backend for LineBackend {
             message: format!("{}\n{}", title, msg.to_string()),
         };
         let req = match surf::post(API_URL)
-            .set_header("Authorization", format!("Bearer {}", self.token))
-            .body_form(body)
+            .header("Authorization", format!("Bearer {}", self.token))
+            .body_json(body)
         {
             Ok(req) => req,
             Err(err) => return Err(BackendError::Message(err.to_string())),

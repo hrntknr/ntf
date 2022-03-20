@@ -35,7 +35,7 @@ impl Backend for SyslogBackend {
             },
             hostname: None,
             process: "ntf".into(),
-            pid: process::id() as i32,
+            pid: process::id() as u32,
         };
         let mut writer = match syslog::unix(formatter) {
             Ok(writer) => writer,

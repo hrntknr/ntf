@@ -31,9 +31,9 @@ impl Backend for PushbulletBackend {
             body: msg.to_string(),
         };
         let req = match surf::post(API_URL)
-            .set_header("Access-Token", self.token.to_string())
-            .set_header("Content-Type", "application/json")
-            .body_form(body)
+            .header("Access-Token", self.token.to_string())
+            .header("Content-Type", "application/json")
+            .body_json(body)
         {
             Ok(req) => req,
             Err(err) => return Err(BackendError::Message(err.to_string())),

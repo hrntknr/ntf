@@ -7,12 +7,12 @@ use ntf::backends::slack::SlackConfig;
 use ntf::backends::syslog::SyslogConfig;
 
 use async_std::task;
-use clap::{crate_version, App, AppSettings, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use config::{Config, File};
 use failure::{format_err, Error};
 use std::env;
 use std::fs;
-use std::process::{exit, Command, Stdio};
+use std::process;
 use std::time::{Duration, Instant};
 use std::vec::Vec;
 use syslog::Facility;
@@ -22,89 +22,77 @@ fn main() {
         Ok(config) => config,
         Err(err) => {
             println!("{}", err.to_string());
-            exit(1);
+            process::exit(1);
         }
     };
 
     let basic_args = &[
-        Arg::with_name("title")
-            .about("override title")
+        Arg::new("title")
+            .help("override title")
             .long("title")
             .short('t')
-            .multiple(false)
-            .takes_value(true),
-        Arg::with_name("pushover_device")
-            .about("override pushover device")
+            .multiple_values(false),
+        Arg::new("pushover_device")
+            .help("override pushover device")
             .long("pushover.device")
-            .multiple(false)
-            .takes_value(true),
-        Arg::with_name("pushover_priority")
-            .about("override pushover priority")
+            .multiple_values(false),
+        Arg::new("pushover_priority")
+            .help("override pushover priority")
             .long("pushover.priority")
-            .multiple(false)
-            .takes_value(true)
+            .multiple_values(false)
             .possible_values(&["emergency", "high", "normal", "low", "lowest"]),
-        Arg::with_name("pushover_retry")
-            .about("override pushover retry")
+        Arg::new("pushover_retry")
+            .help("override pushover retry")
             .long("pushover.retry")
-            .multiple(false)
-            .takes_value(true),
-        Arg::with_name("pushover_expire")
-            .about("override pushover expire")
+            .multiple_values(false),
+        Arg::new("pushover_expire")
+            .help("override pushover expire")
             .long("pushover.expire")
-            .multiple(false)
-            .takes_value(true),
-        Arg::with_name("slack_color")
-            .about("override slack color")
+            .multiple_values(false),
+        Arg::new("slack_color")
+            .help("override slack color")
             .long("slack.color")
-            .multiple(false)
-            .takes_value(true),
-        Arg::with_name("syslog_facility")
-            .about("override syslog facility")
+            .multiple_values(false),
+        Arg::new("syslog_facility")
+            .help("override syslog facility")
             .long("syslog.facility")
-            .multiple(false)
-            .takes_value(true)
+            .multiple_values(false)
             .possible_values(&[
                 "kern", "user", "mail", "daemon", "auth", "syslog", "lpr", "news", "uucp", "cron",
                 "authpriv", "ftp", "local0", "local1", "local2", "local3", "local4", "local5",
                 "local6", "local7",
             ]),
-        Arg::with_name("syslog_severity")
-            .about("override syslog severity")
+        Arg::new("syslog_severity")
+            .help("override syslog severity")
             .long("syslog.severity")
-            .multiple(false)
-            .takes_value(true)
+            .multiple_values(false)
             .possible_values(&[
                 "emerg", "alert", "crit", "err", "warning", "notice", "info", "debug",
             ]),
     ];
 
-    let app = App::new("ntf")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .version(crate_version!())
+    let app = Command::new("ntf")
         .subcommand(
-            App::new("send")
-                .setting(AppSettings::TrailingVarArg)
+            Command::new("send")
                 .about("send notification")
                 .args(basic_args)
-                .arg(Arg::with_name("message").required(true).multiple(true)),
+                .arg(Arg::new("message").required(true).multiple_values(true)),
         )
         .subcommand(
-            App::new("done")
-                .setting(AppSettings::TrailingVarArg)
+            Command::new("done")
                 .about("Execute the command and notify the message")
                 .args(basic_args)
-                .arg(Arg::with_name("cmd").required(true).multiple(true)),
+                .arg(Arg::new("cmd").required(true).multiple_values(true)),
         )
         .subcommand(
-            App::new("shell-done")
-                .setting(AppSettings::Hidden)
+            Command::new("shell-done")
+                .hide(true)
                 .args(basic_args)
-                .arg(Arg::with_name("code").required(true).multiple(false))
-                .arg(Arg::with_name("duration").required(true).multiple(false))
-                .arg(Arg::with_name("cmd").required(true).multiple(true)),
+                .arg(Arg::new("code").required(true).multiple_values(false))
+                .arg(Arg::new("duration").required(true).multiple_values(false))
+                .arg(Arg::new("cmd").required(true).multiple_values(true)),
         )
-        .subcommand(App::new("shell-integration").about("shell-integration"));
+        .subcommand(Command::new("shell-integration").about("shell-integration"));
     let matches = app.get_matches();
 
     if let Some(ref sub_matches) = matches.subcommand_matches("send") {
@@ -112,7 +100,7 @@ fn main() {
             Ok(_) => {}
             Err(err) => {
                 println!("{}", err.to_string());
-                exit(1);
+                process::exit(1);
             }
         }
     } else if let Some(ref sub_matches) = matches.subcommand_matches("done") {
@@ -120,7 +108,7 @@ fn main() {
             Ok(_) => {}
             Err(err) => {
                 println!("{}", err.to_string());
-                exit(1);
+                process::exit(1);
             }
         }
     } else if let Some(ref sub_matches) = matches.subcommand_matches("shell-done") {
@@ -128,7 +116,7 @@ fn main() {
             Ok(_) => {}
             Err(err) => {
                 println!("{}", err.to_string());
-                exit(1);
+                process::exit(1);
             }
         }
     } else if let Some(ref sub_matches) = matches.subcommand_matches("shell-integration") {
@@ -136,7 +124,7 @@ fn main() {
             Ok(_) => {}
             Err(err) => {
                 println!("{}", err.to_string());
-                exit(1);
+                process::exit(1);
             }
         }
     }
@@ -223,11 +211,11 @@ fn done(backends: Vec<Box<dyn Backend>>, sub_matches: &&ArgMatches) -> Result<()
         .ok_or(format_err!("can't get cmd"))?;
     let cmd: Vec<String> = cmd.map(|s| s.to_string()).collect();
     let start = Instant::now();
-    let code = Command::new(&cmd[0])
+    let code = process::Command::new(&cmd[0])
         .args(&cmd[1..])
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stdin(process::Stdio::inherit())
+        .stdout(process::Stdio::inherit())
+        .stderr(process::Stdio::inherit())
         .spawn()?
         .wait()?
         .code()
@@ -332,7 +320,7 @@ fn shell_integration(
     if !file.exists() {
         fs::write(file, include_str!("./ntf-shell-hook.sh"))?
     };
-    println!("export ${AUTO_NTF_DONE_LONGER_THAN:=10}");
+    println!("export ${{AUTO_NTF_DONE_LONGER_THAN:=10}}");
     println!(
         "source {}/ntf/ntf-shell-hook.sh",
         dirs::data_local_dir()
@@ -379,34 +367,33 @@ fn get_config() -> Result<Vec<Box<dyn Backend>>, Error> {
     let mut path = dirs::home_dir().ok_or(format_err!("can't get home_dir"))?;
     path.push(".ntf.yml");
 
-    let mut settings = Config::default();
-    settings.merge(File::from(path))?;
+    let settings = Config::builder().add_source(File::from(path)).build()?;
 
     let backends_str = settings.get_array("backends")?;
     let mut backends: Vec<Box<dyn Backend>> = Vec::new();
 
     for backend_str in backends_str {
         let settings = settings.clone();
-        let backend_str = backend_str.into_str()?;
+        let backend_str = backend_str.into_string()?;
         match backend_str.as_str() {
             "line" => {
-                let conf = settings.try_into::<LineConfig>()?;
+                let conf: LineConfig = settings.try_deserialize()?;
                 backends.push(Box::new(conf.line));
             }
             "pushbullet" => {
-                let conf = settings.try_into::<PushbulletConfig>()?;
+                let conf: PushbulletConfig = settings.try_deserialize()?;
                 backends.push(Box::new(conf.pushbullet));
             }
             "pushover" => {
-                let conf = settings.try_into::<PushoverConfig>()?;
+                let conf: PushoverConfig = settings.try_deserialize()?;
                 backends.push(Box::new(conf.pushover));
             }
             "slack" => {
-                let conf = settings.try_into::<SlackConfig>()?;
+                let conf: SlackConfig = settings.try_deserialize()?;
                 backends.push(Box::new(conf.slack));
             }
             "syslog" => {
-                let conf = settings.try_into::<SyslogConfig>()?;
+                let conf: SyslogConfig = settings.try_deserialize()?;
                 backends.push(Box::new(conf.syslog));
             }
             _ => {

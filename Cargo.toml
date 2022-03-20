@@ -5,21 +5,21 @@ authors = ["Takanori Hirano <hrn.takanori@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-surf = "1.0"
-config = "0.10"
-serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
-async-trait = "0.1"
-async-std = "1.6"
-dirs = "1.0"
-hostname = "0.3"
-username = "0.2"
-clap = "3.0.0-beta"
+surf = "2.3.2"
+config = "0.12.0"
+serde = { version = "1.0.136", features = ["derive"] }
+thiserror = "1.0.30"
+async-trait = "0.1.52"
+async-std = "1.10.0"
+dirs = "4.0.0"
+hostname = "0.3.1"
+username = "0.2.0"
+clap = "3.1.6"
 failure = "0.1.8"
-syslog = "5"
+syslog = "6.0.1"
 
 [dev-dependencies]
-regex = "1"
+regex = "1.5.5"
 
 [profile.release]
 lto = true
