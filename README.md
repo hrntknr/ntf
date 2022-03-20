@@ -34,7 +34,7 @@ $ # exec command: `sleep 1` and send result
 $ ntf done sleep 1
 $
 $ # Enable shell integration
-$ echo 'AUTO_NTF_DONE_LONGER_THAN=10' >> ~/.bashrc
+$ echo 'export AUTO_NTF_DONE_LONGER_THAN=10' >> ~/.bashrc
 $ echo 'eval "$(ntf shell-integration)"' >> ~/.bashrc
 ```
 
