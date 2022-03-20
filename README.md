@@ -16,9 +16,9 @@ However, support for the backend type is poorer than ntfy.
 
 ```sh
 $ # for linux
-$ sudo curl -L https://github.com/hrntknr/ntf/releases/download/v0.1.8/ntf-x86_64-unknown-linux-gnu -o /usr/local/bin/ntf
+$ sudo curl -L https://github.com/hrntknr/ntf/releases/download/v0.1.9/ntf-x86_64-unknown-linux-gnu -o /usr/local/bin/ntf
 $ # for mac
-$ # sudo curl -L https://github.com/hrntknr/ntf/releases/download/v0.1.8/ntf-x86_64-apple-darwin -o /usr/local/bin/ntf
+$ # sudo curl -L https://github.com/hrntknr/ntf/releases/download/v0.1.9/ntf-x86_64-apple-darwin -o /usr/local/bin/ntf
 $ sudo chmod +x /usr/local/bin/ntf
 
 $ echo -e 'backends: ["pushover"]\npushover: {"user_key": "t0k3n"}' > ~/.ntf.yml
